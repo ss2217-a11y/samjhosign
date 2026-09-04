@@ -38,7 +38,7 @@ type Analysis = {
 
 type Result = {
   filename: string;
-  pages: number;
+  pages: number | null;
   text: string;
   analysis: Analysis;
 };
@@ -125,13 +125,16 @@ export default function UploadCard() {
 
       formData.append("file", file);
 
-      const response = await fetch(
-        "http://127.0.0.1:8000/analyze",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      // Uses the deployed Render backend in production.
+      // Falls back to the local backend when running locally.
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL ||
+        "http://127.0.0.1:8000";
+
+      const response = await fetch(`${API_URL}/analyze`, {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
         throw new Error(
@@ -481,10 +484,12 @@ export default function UploadCard() {
               {result.filename}
             </p>
 
-            <p className="mt-1 text-sm text-gray-600">
-              {result.pages} page
-              {result.pages !== 1 ? "s" : ""}
-            </p>
+            {result.pages !== null && (
+              <p className="mt-1 text-sm text-gray-600">
+                {result.pages} page
+                {result.pages !== 1 ? "s" : ""}
+              </p>
+            )}
           </div>
 
           {/* Success header */}
@@ -504,10 +509,12 @@ export default function UploadCard() {
                     {result.filename}
                   </p>
 
-                  <p className="mt-1 text-sm text-emerald-600">
-                    {result.pages} page
-                    {result.pages !== 1 ? "s" : ""} extracted
-                  </p>
+                  {result.pages !== null && (
+                    <p className="mt-1 text-sm text-emerald-600">
+                      {result.pages} page
+                      {result.pages !== 1 ? "s" : ""} extracted
+                    </p>
+                  )}
                 </div>
               </div>
 
