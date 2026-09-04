@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import UploadCard from "@/components/upload-card";
 
@@ -120,7 +121,10 @@ export default function Hero() {
         </div>
 
         {/* ================= WHAT WE CHECK ================= */}
-        <div className="border-t border-gray-200 py-28">
+        <div
+          id="what-we-check"
+          className="border-t border-gray-200 py-28"
+        >
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-400">
               What we look for
@@ -137,7 +141,7 @@ export default function Hero() {
           </div>
 
           <div className="mx-auto mt-12 grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Card */}
+            {/* Money */}
             <div className="group rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-white">
                 ₹
@@ -153,7 +157,7 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* Card */}
+            {/* Deadlines */}
             <div className="group rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-white">
                 ⏱
@@ -169,7 +173,7 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* Card */}
+            {/* Risks */}
             <div className="group rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-white">
                 !
@@ -185,7 +189,7 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* Card */}
+            {/* Responsibilities */}
             <div className="group rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-white">
                 ✓
@@ -201,7 +205,7 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* Card */}
+            {/* Restrictions */}
             <div className="group rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-white">
                 #
@@ -217,7 +221,7 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* Card */}
+            {/* Important clauses */}
             <div className="group rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-white">
                 ?
@@ -352,14 +356,79 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* ================= DISCLAIMER ================= */}
-        <div className="border-t border-gray-200 py-10 text-center">
-          <p className="mx-auto max-w-2xl text-xs leading-6 text-gray-400">
-            SamjhoSign helps you understand your rental agreement in simpler
-            language. It is an informational tool and does not replace
-            professional legal advice.
-          </p>
-        </div>
+        {/* ================= FOOTER ================= */}
+        <footer className="border-t border-gray-200 py-12">
+          <div className="grid gap-10 md:grid-cols-3">
+            {/* Brand */}
+            <div>
+              <Link
+                href="/"
+                className="text-xl font-bold tracking-tight text-gray-950"
+              >
+                SamjhoSign
+              </Link>
+
+              <p className="mt-4 max-w-sm text-sm leading-6 text-gray-500">
+                Understand your rental agreement before you sign.
+                SamjhoSign turns complicated contract language into
+                information you can actually understand.
+              </p>
+            </div>
+
+            {/* Product */}
+            <div>
+              <p className="text-sm font-semibold text-gray-900">
+                Product
+              </p>
+
+              <div className="mt-4 space-y-3">
+                <a
+                  href="#upload-agreement"
+                  className="block text-sm text-gray-500 transition hover:text-gray-900"
+                >
+                  Analyze agreement
+                </a>
+
+                <a
+                  href="#what-we-check"
+                  className="block text-sm text-gray-500 transition hover:text-gray-900"
+                >
+                  What we check
+                </a>
+
+                <a
+                  href="#how-it-works"
+                  className="block text-sm text-gray-500 transition hover:text-gray-900"
+                >
+                  How it works
+                </a>
+              </div>
+            </div>
+
+            {/* Important */}
+            <div>
+              <p className="text-sm font-semibold text-gray-900">
+                Important
+              </p>
+
+              <p className="mt-4 text-sm leading-6 text-gray-500">
+                SamjhoSign provides AI-powered explanations for
+                informational purposes. It does not provide legal advice
+                or determine whether a clause is legally enforceable.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-12 flex flex-col gap-3 border-t border-gray-200 pt-6 text-xs text-gray-400 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              © {new Date().getFullYear()} SamjhoSign. All rights reserved.
+            </p>
+
+            <p>
+              Built to help tenants understand before they sign.
+            </p>
+          </div>
+        </footer>
       </div>
     </section>
   );

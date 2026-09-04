@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 type FinancialObligation = {
   title: string;
@@ -45,17 +46,20 @@ type Result = {
 
 export default function UploadCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
 
   const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
 
   function processFile(selectedFile: File) {
     setError("");
     setResult(null);
+    setSaveMessage("");
 
     if (selectedFile.type !== "application/pdf") {
       setFile(null);
@@ -80,9 +84,7 @@ export default function UploadCard() {
     fileInputRef.current?.click();
   }
 
-  function handleFileChange(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0];
 
     if (!selectedFile) {
@@ -126,8 +128,8 @@ export default function UploadCard() {
     setFile(null);
     setResult(null);
     setError("");
+    setSaveMessage("");
     setLoadingStep(0);
-    setIsDragging(false);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -139,6 +141,49 @@ export default function UploadCard() {
     });
   }
 
+  async function saveAnalysisToSupabase(data: Result) {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setSaveMessage(
+          "Analysis completed. Sign in to save this report to your history."
+        );
+        return;
+      }
+
+      const { error: saveError } = await supabase
+        .from("analyses")
+        .insert({
+          user_id: user.id,
+          filename: data.filename,
+          pages: data.pages,
+          text: data.text,
+          analysis: data.analysis,
+        });
+
+      if (saveError) {
+        console.error("Supabase save error:", saveError);
+
+        setSaveMessage(
+          "Analysis completed, but the report could not be saved."
+        );
+
+        return;
+      }
+
+      setSaveMessage("✓ Analysis saved to your account.");
+    } catch (err) {
+      console.error("Save analysis error:", err);
+
+      setSaveMessage(
+        "Analysis completed, but the report could not be saved."
+      );
+    }
+  }
+
   async function handleAnalyze() {
     if (!file) {
       setError("Please upload a PDF first.");
@@ -148,6 +193,7 @@ export default function UploadCard() {
     setIsAnalyzing(true);
     setLoadingStep(0);
     setError("");
+    setSaveMessage("");
     setResult(null);
 
     const stepTimer1 = setTimeout(() => {
@@ -188,6 +234,8 @@ export default function UploadCard() {
 
       setLoadingStep(4);
       setResult(data);
+
+      await saveAnalysisToSupabase(data);
 
       setTimeout(() => {
         document
@@ -285,12 +333,19 @@ export default function UploadCard() {
       (item) => item.severity.toLowerCase() === "low"
     ).length ?? 0;
 
-  const totalRiskCount =
-    result?.analysis.risks.length ?? 0;
+  const totalRiskCount = result?.analysis.risks.length ?? 0;
+
+  const financialCount =
+    result?.analysis.financial_obligations.length ?? 0;
+
+  const deadlineCount =
+    result?.analysis.deadlines.length ?? 0;
+
+  const clauseCount =
+    result?.analysis.important_clauses.length ?? 0;
 
   return (
-    <section className="mx-auto w-full max-w-5xl pb-24">
-      {/* Hidden file input */}
+    <section className="mx-auto w-full max-w-6xl px-6 pb-24">
       <input
         ref={fileInputRef}
         type="file"
@@ -299,97 +354,52 @@ export default function UploadCard() {
         className="hidden"
       />
 
-      {/* ================= UPLOAD AREA ================= */}
       {!file && !isAnalyzing && !result && (
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={handleChooseFile}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              handleChooseFile();
-            }
-          }}
-          className={`group cursor-pointer rounded-[2rem] border-2 border-dashed p-8 text-center transition-all duration-200 sm:p-12 ${
+          className={`group mx-auto max-w-3xl cursor-pointer rounded-3xl border-2 border-dashed p-10 text-center transition-all duration-200 sm:p-14 ${
             isDragging
-              ? "border-black bg-gray-50 shadow-lg"
-              : "border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50/70 hover:shadow-md"
+              ? "scale-[1.01] border-black bg-gray-50"
+              : "border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50"
           }`}
         >
-          {/* Upload icon */}
-          <div
-            className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl transition-all ${
-              isDragging
-                ? "bg-black text-white"
-                : "bg-gray-100 text-gray-900 group-hover:bg-black group-hover:text-white"
-            }`}
-          >
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <path d="M14 2v6h6" />
-              <path d="M12 18v-6" />
-              <path d="m9 15 3-3 3 3" />
-            </svg>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-black text-2xl text-white shadow-sm transition-transform duration-200 group-hover:-translate-y-1">
+            ↑
           </div>
 
-          <h3 className="mt-6 text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
-            {isDragging
-              ? "Drop your agreement here"
-              : "Drop your agreement here"}
-          </h3>
+          <h2 className="mt-6 text-2xl font-bold text-gray-900">
+            Drop your agreement here
+          </h2>
 
-          <p className="mt-2 text-sm leading-6 text-gray-500">
-            or click anywhere here to choose a PDF from your computer
+          <p className="mt-2 text-gray-500">
+            or click anywhere here to choose a PDF
           </p>
 
-          <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-xs font-medium text-gray-600">
-            <span>PDF</span>
-            <span className="text-gray-300">•</span>
-            <span>Maximum 10 MB</span>
-          </div>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+              PDF only
+            </span>
 
-          <div className="mx-auto mt-8 flex max-w-md items-center justify-center gap-3 text-xs text-gray-400">
-            <span className="h-px flex-1 bg-gray-200" />
-            <span>Secure document analysis</span>
-            <span className="h-px flex-1 bg-gray-200" />
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+              Maximum 10 MB
+            </span>
+
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+              Secure analysis
+            </span>
           </div>
         </div>
       )}
 
-      {/* ================= SELECTED FILE ================= */}
       {file && !result && !isAnalyzing && (
-        <div className="space-y-5">
-          <div className="rounded-[2rem] border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-              {/* PDF icon */}
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gray-100">
-                <svg
-                  width="30"
-                  height="30"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <path d="M14 2v6h6" />
-                  <path d="M8 13h2" />
-                  <path d="M8 17h6" />
-                </svg>
+        <div className="mx-auto max-w-3xl space-y-5">
+          <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-2xl">
+                📄
               </div>
 
               <div className="min-w-0 flex-1">
@@ -402,17 +412,17 @@ export default function UploadCard() {
                 </p>
               </div>
 
-              <div className="w-fit rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-700">
-                Ready to analyze
-              </div>
+              <span className="hidden rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 sm:block">
+                Ready
+              </span>
             </div>
           </div>
 
-          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+          <div className="flex flex-wrap justify-center gap-3">
             <button
               type="button"
               onClick={handleAnalyze}
-              className="rounded-2xl bg-black px-8 py-4 text-base font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md"
+              className="rounded-2xl bg-black px-8 py-4 text-lg font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md"
             >
               Analyze Agreement
             </button>
@@ -420,39 +430,27 @@ export default function UploadCard() {
             <button
               type="button"
               onClick={handleChooseFile}
-              className="rounded-2xl border border-gray-300 bg-white px-7 py-4 text-base font-semibold text-gray-800 transition hover:bg-gray-50"
+              className="rounded-2xl border border-gray-300 bg-white px-6 py-4 text-lg font-medium text-gray-800 transition hover:bg-gray-50"
             >
               Choose a different file
             </button>
           </div>
 
-          <p className="text-center text-xs leading-5 text-gray-400">
-            Analysis may take a few moments depending on the agreement length.
+          <p className="text-center text-xs text-gray-400">
+            Analysis may take a few moments depending on the agreement
+            length.
           </p>
         </div>
       )}
 
-      {/* ================= LOADING ================= */}
       {isAnalyzing && (
         <div className="mx-auto max-w-2xl">
-          <div className="rounded-[2rem] border border-gray-200 bg-white p-8 shadow-sm sm:p-10">
+          <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm sm:p-10">
             <div className="flex flex-col items-center text-center">
               <div className="relative flex h-20 w-20 items-center justify-center">
                 <div className="absolute h-20 w-20 animate-spin rounded-full border-4 border-gray-200 border-t-black" />
 
-                <svg
-                  width="30"
-                  height="30"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <path d="M14 2v6h6" />
-                </svg>
+                <span className="text-2xl">📄</span>
               </div>
 
               <h2 className="mt-7 text-2xl font-bold text-gray-900">
@@ -531,16 +529,16 @@ export default function UploadCard() {
 
             <div className="mt-6 rounded-2xl bg-gray-50 p-4 text-center">
               <p className="text-xs leading-5 text-gray-500">
-                🔒 Your agreement is being processed securely for this analysis.
+                🔒 Your agreement is being processed securely for this
+                analysis.
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* ================= ERROR ================= */}
       {error && (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-center text-red-700">
+        <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-red-200 bg-red-50 p-5 text-center text-red-700">
           <p className="font-medium">Something went wrong</p>
 
           <p className="mt-1 text-sm">{error}</p>
@@ -549,7 +547,7 @@ export default function UploadCard() {
             <button
               type="button"
               onClick={() => setError("")}
-              className="mt-4 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
+              className="mt-4 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
             >
               Dismiss
             </button>
@@ -557,34 +555,43 @@ export default function UploadCard() {
         </div>
       )}
 
-      {/* ================= RESULTS ================= */}
       {result && (
         <div
           id="analysis-results"
           className="mt-12 scroll-mt-24 space-y-6"
         >
-          {/* Result actions */}
           <div className="no-print flex flex-wrap justify-center gap-3">
             <button
               type="button"
               onClick={handlePrintReport}
-              className="rounded-2xl bg-black px-7 py-3.5 text-base font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md"
+              className="rounded-xl bg-black px-6 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
             >
-              🖨️ Save as PDF
+              🖨 Save as PDF
             </button>
 
             <button
               type="button"
               onClick={handleStartOver}
-              className="rounded-2xl border border-gray-300 bg-white px-7 py-3.5 text-base font-medium text-gray-800 transition hover:bg-gray-50"
+              className="rounded-xl border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
             >
               Analyze another
             </button>
           </div>
 
-          {/* Print title */}
+          {saveMessage && (
+            <div
+              className={`rounded-2xl border p-4 text-center text-sm font-medium ${
+                saveMessage.startsWith("✓")
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-amber-200 bg-amber-50 text-amber-700"
+              }`}
+            >
+              {saveMessage}
+            </div>
+          )}
+
           <div className="hidden print:block">
-            <p className="text-sm font-medium uppercase tracking-wider text-gray-500">
+            <p className="text-sm font-semibold uppercase tracking-wider text-gray-500">
               SamjhoSign
             </p>
 
@@ -595,20 +602,12 @@ export default function UploadCard() {
             <p className="mt-2 text-sm text-gray-600">
               {result.filename}
             </p>
-
-            {result.pages !== null && (
-              <p className="mt-1 text-sm text-gray-600">
-                {result.pages} page
-                {result.pages !== 1 ? "s" : ""}
-              </p>
-            )}
           </div>
 
-          {/* Success header */}
-          <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6">
+          <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 sm:p-7">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xl text-emerald-700">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xl font-bold text-emerald-700">
                   ✓
                 </div>
 
@@ -622,9 +621,8 @@ export default function UploadCard() {
                   </p>
 
                   {result.pages !== null && (
-                    <p className="mt-1 text-sm text-emerald-600">
-                      {result.pages} page
-                      {result.pages !== 1 ? "s" : ""} extracted
+                    <p className="mt-1 text-xs text-emerald-600">
+                      {result.pages} pages analyzed
                     </p>
                   )}
                 </div>
@@ -633,14 +631,13 @@ export default function UploadCard() {
               <button
                 type="button"
                 onClick={handleStartOver}
-                className="no-print w-full rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100 sm:w-auto"
+                className="no-print rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100"
               >
                 Analyze another
               </button>
             </div>
           </div>
 
-          {/* Results navigation */}
           <div className="no-print sticky top-16 z-40 -mx-2 overflow-x-auto rounded-2xl border border-gray-200 bg-white/95 p-2 shadow-sm backdrop-blur">
             <div className="flex min-w-max items-center gap-1">
               <a
@@ -687,7 +684,6 @@ export default function UploadCard() {
             </div>
           </div>
 
-          {/* Overall Risk */}
           <div id="summary" className="scroll-mt-36">
             {(() => {
               const riskStyles = getRiskStyles(
@@ -696,25 +692,25 @@ export default function UploadCard() {
 
               return (
                 <div
-                  className={`rounded-3xl border p-7 shadow-sm ${riskStyles.container}`}
+                  className={`overflow-hidden rounded-3xl border p-7 shadow-sm sm:p-8 ${riskStyles.container}`}
                 >
-                  <div className="flex flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-500">
-                        Overall agreement risk
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">
+                        Agreement overview
                       </p>
 
-                      <h2 className="mt-2 text-3xl font-bold text-gray-900">
-                        Risk assessment
+                      <h2 className="mt-3 text-3xl font-bold tracking-tight text-gray-950 sm:text-4xl">
+                        Here&apos;s what you need to know.
                       </h2>
 
-                      <p className="mt-2 max-w-xl text-sm leading-6 text-gray-600">
-                        This assessment is based on potentially important
-                        terms detected in the uploaded agreement.
+                      <p className="mt-3 max-w-2xl text-sm leading-7 text-gray-600">
+                        SamjhoSign reviewed the agreement and highlighted
+                        terms that may matter to you before signing.
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex shrink-0 items-center gap-4 rounded-2xl bg-white/70 p-4">
                       <div
                         className={`flex h-16 w-16 items-center justify-center rounded-2xl text-2xl font-bold ${riskStyles.icon}`}
                       >
@@ -725,12 +721,12 @@ export default function UploadCard() {
                       </div>
 
                       <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                          Assessment
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Overall risk
                         </p>
 
                         <p
-                          className={`text-2xl font-bold ${riskStyles.text}`}
+                          className={`mt-1 text-2xl font-bold ${riskStyles.text}`}
                         >
                           {riskStyles.label}
                         </p>
@@ -742,32 +738,151 @@ export default function UploadCard() {
             })()}
           </div>
 
-          {/* Risk Breakdown */}
-          <div className="rounded-3xl border border-gray-200 bg-white p-7 shadow-sm">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <a
+              href="#financial"
+              className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-2xl">💰</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Money
+                </span>
+              </div>
+
+              <p className="mt-5 text-3xl font-bold text-gray-950">
+                {financialCount}
+              </p>
+
+              <p className="mt-1 text-sm text-gray-500">
+                financial obligations
+              </p>
+
+              <p className="mt-4 text-xs font-medium text-gray-400 transition group-hover:text-gray-700">
+                View details →
+              </p>
+            </a>
+
+            <a
+              href="#deadlines"
+              className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-2xl">📅</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Dates
+                </span>
+              </div>
+
+              <p className="mt-5 text-3xl font-bold text-gray-950">
+                {deadlineCount}
+              </p>
+
+              <p className="mt-1 text-sm text-gray-500">
+                important deadlines
+              </p>
+
+              <p className="mt-4 text-xs font-medium text-gray-400 transition group-hover:text-gray-700">
+                View details →
+              </p>
+            </a>
+
+            <a
+              href="#risks"
+              className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-2xl">⚠️</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Risks
+                </span>
+              </div>
+
+              <p className="mt-5 text-3xl font-bold text-gray-950">
+                {totalRiskCount}
+              </p>
+
+              <p className="mt-1 text-sm text-gray-500">
+                issues detected
+              </p>
+
+              <p className="mt-4 text-xs font-medium text-gray-400 transition group-hover:text-gray-700">
+                View details →
+              </p>
+            </a>
+
+            <a
+              href="#clauses"
+              className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-2xl">📄</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Clauses
+                </span>
+              </div>
+
+              <p className="mt-5 text-3xl font-bold text-gray-950">
+                {clauseCount}
+              </p>
+
+              <p className="mt-1 text-sm text-gray-500">
+                important clauses
+              </p>
+
+              <p className="mt-4 text-xs font-medium text-gray-400 transition group-hover:text-gray-700">
+                View details →
+              </p>
+            </a>
+          </div>
+
+          <div className="rounded-3xl border border-gray-200 bg-white p-7 shadow-sm sm:p-8">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black text-xl text-white">
+                💡
+              </div>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400">
+                  Start here
+                </p>
+
+                <h2 className="mt-1 text-2xl font-bold text-gray-950">
+                  Plain-English Summary
+                </h2>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-gray-50 p-6 sm:p-7">
+              <p className="text-base leading-8 text-gray-700">
+                {result.analysis.summary}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-gray-200 bg-white p-7 shadow-sm sm:p-8">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                    📊
-                  </div>
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400">
+                  Risk overview
+                </p>
 
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Risk Breakdown
-                  </h2>
-                </div>
+                <h2 className="mt-1 text-2xl font-bold text-gray-950">
+                  Risk Breakdown
+                </h2>
 
-                <p className="mt-3 text-sm leading-6 text-gray-500">
-                  A quick view of the potentially important issues found
-                  in your agreement.
+                <p className="mt-2 text-sm leading-6 text-gray-500">
+                  A quick view of potentially important issues found in
+                  your agreement.
                 </p>
               </div>
 
-              <div className="text-left sm:text-right">
-                <p className="text-3xl font-bold text-gray-900">
+              <div className="rounded-2xl bg-gray-50 px-5 py-3">
+                <p className="text-2xl font-bold text-gray-950">
                   {totalRiskCount}
                 </p>
 
-                <p className="text-sm text-gray-500">
+                <p className="text-xs text-gray-500">
                   {totalRiskCount === 1
                     ? "issue detected"
                     : "issues detected"}
@@ -789,15 +904,9 @@ export default function UploadCard() {
             ) : (
               <div className="mt-6 grid gap-4 sm:grid-cols-3">
                 <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-red-800">High</p>
+                  <p className="font-semibold text-red-800">High</p>
 
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 font-bold text-red-700">
-                      !
-                    </span>
-                  </div>
-
-                  <p className="mt-4 text-3xl font-bold text-red-700">
+                  <p className="mt-3 text-3xl font-bold text-red-700">
                     {highRiskCount}
                   </p>
 
@@ -809,17 +918,11 @@ export default function UploadCard() {
                 </div>
 
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-amber-800">
-                      Medium
-                    </p>
+                  <p className="font-semibold text-amber-800">
+                    Medium
+                  </p>
 
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 font-bold text-amber-700">
-                      !
-                    </span>
-                  </div>
-
-                  <p className="mt-4 text-3xl font-bold text-amber-700">
+                  <p className="mt-3 text-3xl font-bold text-amber-700">
                     {mediumRiskCount}
                   </p>
 
@@ -831,17 +934,11 @@ export default function UploadCard() {
                 </div>
 
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-emerald-800">
-                      Low
-                    </p>
+                  <p className="font-semibold text-emerald-800">
+                    Low
+                  </p>
 
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-700">
-                      ✓
-                    </span>
-                  </div>
-
-                  <p className="mt-4 text-3xl font-bold text-emerald-700">
+                  <p className="mt-3 text-3xl font-bold text-emerald-700">
                     {lowRiskCount}
                   </p>
 
@@ -855,43 +952,21 @@ export default function UploadCard() {
             )}
           </div>
 
-          {/* Summary */}
-          <div className="rounded-3xl border border-gray-200 bg-white p-7 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
-                💡
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                  Start here
-                </p>
-
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Plain-English Summary
-                </h2>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl bg-gray-50 p-6">
-              <p className="leading-8 text-gray-700">
-                {result.analysis.summary}
-              </p>
-            </div>
-          </div>
-
-          {/* Financial Obligations */}
           <div
             id="financial"
-            className="scroll-mt-36 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm"
+            className="scroll-mt-36 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm sm:p-8"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-xl">
                 💰
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400">
+                  Money
+                </p>
+
+                <h2 className="mt-1 text-2xl font-bold text-gray-950">
                   Financial Obligations
                 </h2>
 
@@ -901,8 +976,8 @@ export default function UploadCard() {
               </div>
             </div>
 
-            {result.analysis.financial_obligations.length === 0 ? (
-              <p className="mt-5 rounded-2xl bg-gray-50 p-5 text-gray-500">
+            {financialCount === 0 ? (
+              <p className="mt-6 rounded-2xl bg-gray-50 p-5 text-gray-500">
                 No obvious financial obligations were detected.
               </p>
             ) : (
@@ -911,9 +986,9 @@ export default function UploadCard() {
                   (item, index) => (
                     <div
                       key={index}
-                      className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-gray-300"
+                      className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-gray-300 hover:bg-white"
                     >
-                      <p className="text-lg font-semibold text-gray-900">
+                      <p className="text-lg font-semibold text-gray-950">
                         {item.title}
                       </p>
 
@@ -922,7 +997,7 @@ export default function UploadCard() {
                           Amount
                         </p>
 
-                        <p className="mt-1 text-xl font-bold text-gray-900">
+                        <p className="mt-1 text-xl font-bold text-gray-950">
                           {item.amount}
                         </p>
                       </div>
@@ -937,18 +1012,21 @@ export default function UploadCard() {
             )}
           </div>
 
-          {/* Deadlines */}
           <div
             id="deadlines"
-            className="scroll-mt-36 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm"
+            className="scroll-mt-36 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm sm:p-8"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-xl">
                 📅
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400">
+                  Dates & notice
+                </p>
+
+                <h2 className="mt-1 text-2xl font-bold text-gray-950">
                   Important Deadlines
                 </h2>
 
@@ -958,8 +1036,8 @@ export default function UploadCard() {
               </div>
             </div>
 
-            {result.analysis.deadlines.length === 0 ? (
-              <p className="mt-5 rounded-2xl bg-gray-50 p-5 text-gray-500">
+            {deadlineCount === 0 ? (
+              <p className="mt-6 rounded-2xl bg-gray-50 p-5 text-gray-500">
                 No obvious deadlines were detected.
               </p>
             ) : (
@@ -967,14 +1045,14 @@ export default function UploadCard() {
                 {result.analysis.deadlines.map((item, index) => (
                   <div
                     key={index}
-                    className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-gray-300"
+                    className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-gray-300 hover:bg-white"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-lg font-semibold text-gray-950">
                         {item.title}
                       </h3>
 
-                      <span className="w-fit rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700">
+                      <span className="w-fit rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-semibold text-gray-700">
                         {item.deadline}
                       </span>
                     </div>
@@ -988,18 +1066,21 @@ export default function UploadCard() {
             )}
           </div>
 
-          {/* Risks */}
           <div
             id="risks"
-            className="scroll-mt-36 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm"
+            className="scroll-mt-36 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm sm:p-8"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-xl">
                 ⚠️
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400">
+                  Review carefully
+                </p>
+
+                <h2 className="mt-1 text-2xl font-bold text-gray-950">
                   Clauses to Pay Attention To
                 </h2>
 
@@ -1009,12 +1090,12 @@ export default function UploadCard() {
               </div>
             </div>
 
-            {result.analysis.risks.length === 0 ? (
-              <p className="mt-5 rounded-2xl bg-gray-50 p-5 text-gray-500">
+            {totalRiskCount === 0 ? (
+              <p className="mt-6 rounded-2xl bg-gray-50 p-5 text-gray-500">
                 No major risk-related clauses were detected.
               </p>
             ) : (
-              <div className="mt-6 space-y-4">
+              <div className="mt-6 space-y-5">
                 {result.analysis.risks.map((item, index) => {
                   const severity = item.severity.toLowerCase();
 
@@ -1028,15 +1109,15 @@ export default function UploadCard() {
                   return (
                     <div
                       key={index}
-                      className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-gray-300"
+                      className="rounded-2xl border border-gray-200 bg-gray-50 p-5 sm:p-6"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-semibold text-gray-500">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm font-bold text-gray-500">
                             {index + 1}
                           </span>
 
-                          <h3 className="text-lg font-semibold text-gray-900">
+                          <h3 className="text-lg font-semibold text-gray-950">
                             {item.title}
                           </h3>
                         </div>
@@ -1053,13 +1134,13 @@ export default function UploadCard() {
                       </p>
 
                       {item.agreement_text && (
-                        <div className="mt-5 rounded-xl border border-gray-200 bg-white p-4">
-                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-5">
+                          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">
                             Agreement wording
                           </p>
 
-                          <blockquote className="border-l-2 border-gray-300 pl-4 text-sm italic leading-6 text-gray-600">
-                            "{item.agreement_text}"
+                          <blockquote className="border-l-2 border-gray-300 pl-4 text-sm italic leading-7 text-gray-600">
+                            &quot;{item.agreement_text}&quot;
                           </blockquote>
                         </div>
                       )}
@@ -1070,18 +1151,21 @@ export default function UploadCard() {
             )}
           </div>
 
-          {/* Important Clauses */}
           <div
             id="clauses"
-            className="scroll-mt-36 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm"
+            className="scroll-mt-36 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm sm:p-8"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-xl">
                 📄
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400">
+                  Key terms
+                </p>
+
+                <h2 className="mt-1 text-2xl font-bold text-gray-950">
                   Important Clauses
                 </h2>
 
@@ -1091,24 +1175,24 @@ export default function UploadCard() {
               </div>
             </div>
 
-            {result.analysis.important_clauses.length === 0 ? (
-              <p className="mt-5 rounded-2xl bg-gray-50 p-5 text-gray-500">
+            {clauseCount === 0 ? (
+              <p className="mt-6 rounded-2xl bg-gray-50 p-5 text-gray-500">
                 No specific clauses were detected.
               </p>
             ) : (
-              <div className="mt-6 space-y-4">
+              <div className="mt-6 space-y-5">
                 {result.analysis.important_clauses.map(
                   (item, index) => (
                     <div
                       key={index}
-                      className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-gray-300"
+                      className="rounded-2xl border border-gray-200 bg-gray-50 p-5 sm:p-6"
                     >
                       <div className="flex items-start gap-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-gray-500">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-gray-500">
                           {index + 1}
                         </span>
 
-                        <h3 className="pt-1 text-lg font-semibold text-gray-900">
+                        <h3 className="pt-1 text-lg font-semibold text-gray-950">
                           {item.title}
                         </h3>
                       </div>
@@ -1118,13 +1202,13 @@ export default function UploadCard() {
                       </p>
 
                       {item.agreement_text && (
-                        <div className="mt-5 rounded-xl border border-gray-200 bg-white p-4">
-                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-5">
+                          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">
                             Agreement wording
                           </p>
 
-                          <blockquote className="border-l-2 border-gray-300 pl-4 text-sm italic leading-6 text-gray-600">
-                            "{item.agreement_text}"
+                          <blockquote className="border-l-2 border-gray-300 pl-4 text-sm italic leading-7 text-gray-600">
+                            &quot;{item.agreement_text}&quot;
                           </blockquote>
                         </div>
                       )}
@@ -1135,18 +1219,21 @@ export default function UploadCard() {
             )}
           </div>
 
-          {/* Extracted Agreement */}
           <div
             id="agreement-text"
-            className="scroll-mt-36 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm"
+            className="scroll-mt-36 rounded-3xl border border-gray-200 bg-white p-7 shadow-sm sm:p-8"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-xl">
                 📝
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400">
+                  Original text
+                </p>
+
+                <h2 className="mt-1 text-2xl font-bold text-gray-950">
                   Extracted Agreement
                 </h2>
 
@@ -1156,28 +1243,27 @@ export default function UploadCard() {
               </div>
             </div>
 
-            <div className="mt-6 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm leading-7 text-gray-700">
+            <div className="mt-6 max-h-[500px] overflow-y-auto whitespace-pre-wrap rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm leading-7 text-gray-700">
               {result.text}
             </div>
           </div>
 
-          {/* Disclaimer */}
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
+          <div className="rounded-3xl border border-gray-200 bg-gray-50 p-6 sm:p-7">
             <div className="flex items-start gap-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-lg shadow-sm">
                 ℹ️
               </div>
 
               <div>
-                <h2 className="font-semibold text-gray-900">
+                <h2 className="font-semibold text-gray-950">
                   Important Disclaimer
                 </h2>
 
                 <p className="mt-2 text-sm leading-6 text-gray-600">
                   SamjhoSign provides an AI-powered explanation of your
-                  rental agreement for informational purposes only. It is not
-                  legal advice and does not determine whether a clause is
-                  legally enforceable.
+                  rental agreement for informational purposes only. It is
+                  not legal advice and does not determine whether a clause
+                  is legally enforceable.
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-gray-600">
@@ -1188,24 +1274,23 @@ export default function UploadCard() {
             </div>
           </div>
 
-          {/* Bottom CTA */}
-          <div className="no-print rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-            <p className="text-sm font-medium text-gray-500">
-              Finished reviewing this agreement?
+          <div className="no-print rounded-3xl bg-black p-8 text-center text-white sm:p-12">
+            <p className="text-sm font-medium uppercase tracking-[0.15em] text-gray-400">
+              Finished reviewing?
             </p>
 
-            <h2 className="mt-2 text-2xl font-bold text-gray-900">
-              Analyze another agreement
+            <h2 className="mt-3 text-2xl font-bold sm:text-3xl">
+              Have another agreement?
             </h2>
 
-            <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-gray-500">
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-gray-400">
               Upload another rental agreement and get a fresh analysis.
             </p>
 
             <button
               type="button"
               onClick={handleStartOver}
-              className="mt-6 rounded-2xl bg-black px-8 py-4 text-lg font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md"
+              className="mt-7 rounded-xl bg-white px-7 py-3.5 text-sm font-semibold text-black transition hover:bg-gray-200"
             >
               Analyze Another Agreement
             </button>
