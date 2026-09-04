@@ -4,16 +4,48 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import jsPDF from "jspdf";
+
+type FinancialObligation = {
+  title?: string;
+  amount?: string;
+  explanation?: string;
+};
+
+type Deadline = {
+  title?: string;
+  deadline?: string;
+  explanation?: string;
+};
+
+type Risk = {
+  title?: string;
+  severity?: string;
+  explanation?: string;
+  agreement_text?: string;
+};
+
+type ImportantClause = {
+  title?: string;
+  explanation?: string;
+  agreement_text?: string;
+};
+
+type AnalysisData = {
+  overall_risk?: string;
+  summary?: string;
+  financial_obligations?: FinancialObligation[];
+  deadlines?: Deadline[];
+  risks?: Risk[];
+  important_clauses?: ImportantClause[];
+};
 
 type Analysis = {
   id: string;
   created_at: string;
   filename: string;
   pages: number | null;
-  analysis: {
-    overall_risk?: string;
-    summary?: string;
-  } | null;
+  analysis: AnalysisData | null;
 };
 
 export default function HistoryPage() {
@@ -24,6 +56,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadAnalyses() {
@@ -106,6 +139,483 @@ export default function HistoryPage() {
     }
   }
 
+  function addWrappedText(
+    doc: jsPDF,
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    lineHeight = 6
+  ) {
+    const lines = doc.splitTextToSize(text, maxWidth);
+
+    for (const line of lines) {
+      if (y > 275) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.text(line, x, y);
+      y += lineHeight;
+    }
+
+    return y;
+  }
+
+  function addSectionTitle(
+    doc: jsPDF,
+    title: string,
+    y: number
+  ) {
+    if (y > 265) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(title, 20, y);
+
+    return y + 9;
+  }
+
+  async function handleDownloadPDF(
+    event: React.MouseEvent<HTMLButtonElement>,
+    item: Analysis
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setDownloadingId(item.id);
+    setError("");
+
+    try {
+      const doc = new jsPDF();
+
+      const analysis = item.analysis ?? {};
+      const risk = analysis.overall_risk ?? "Unknown";
+
+      // ----------------------------------------------------
+      // HEADER
+      // ----------------------------------------------------
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(24);
+      doc.text("SamjhoSign", 20, 25);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(
+        "Rental Agreement Analysis Report",
+        20,
+        32
+      );
+
+      // Divider
+      doc.line(20, 38, 190, 38);
+
+      // ----------------------------------------------------
+      // AGREEMENT DETAILS
+      // ----------------------------------------------------
+
+      let y = 50;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Agreement", 20, y);
+
+      y += 7;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+
+      y = addWrappedText(
+        doc,
+        item.filename,
+        20,
+        y,
+        170
+      );
+
+      y += 2;
+
+      y = addWrappedText(
+        doc,
+        `Analyzed: ${new Date(
+          item.created_at
+        ).toLocaleString("en-IN")}`,
+        20,
+        y,
+        170
+      );
+
+      if (item.pages) {
+        y = addWrappedText(
+          doc,
+          `Pages: ${item.pages}`,
+          20,
+          y,
+          170
+        );
+      }
+
+      y += 5;
+
+      // ----------------------------------------------------
+      // OVERALL RISK
+      // ----------------------------------------------------
+
+      y = addSectionTitle(
+        doc,
+        "Overall Risk",
+        y
+      );
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(`${risk} risk`, 20, y);
+
+      y += 12;
+
+      // ----------------------------------------------------
+      // SUMMARY
+      // ----------------------------------------------------
+
+      if (analysis.summary) {
+        y = addSectionTitle(
+          doc,
+          "Summary",
+          y
+        );
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+
+        y = addWrappedText(
+          doc,
+          analysis.summary,
+          20,
+          y,
+          170
+        );
+
+        y += 6;
+      }
+
+      // ----------------------------------------------------
+      // FINANCIAL OBLIGATIONS
+      // ----------------------------------------------------
+
+      if (
+        analysis.financial_obligations &&
+        analysis.financial_obligations.length > 0
+      ) {
+        y = addSectionTitle(
+          doc,
+          "Financial Obligations",
+          y
+        );
+
+        for (const obligation of analysis.financial_obligations) {
+          if (y > 260) {
+            doc.addPage();
+            y = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+
+          y = addWrappedText(
+            doc,
+            obligation.title ?? "Financial obligation",
+            20,
+            y,
+            170
+          );
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+
+          if (obligation.amount) {
+            y = addWrappedText(
+              doc,
+              `Amount: ${obligation.amount}`,
+              25,
+              y,
+              165
+            );
+          }
+
+          if (obligation.explanation) {
+            y = addWrappedText(
+              doc,
+              obligation.explanation,
+              25,
+              y,
+              165
+            );
+          }
+
+          y += 4;
+        }
+      }
+
+      // ----------------------------------------------------
+      // DEADLINES
+      // ----------------------------------------------------
+
+      if (
+        analysis.deadlines &&
+        analysis.deadlines.length > 0
+      ) {
+        y = addSectionTitle(
+          doc,
+          "Deadlines",
+          y
+        );
+
+        for (const deadline of analysis.deadlines) {
+          if (y > 260) {
+            doc.addPage();
+            y = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+
+          y = addWrappedText(
+            doc,
+            deadline.title ?? "Deadline",
+            20,
+            y,
+            170
+          );
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+
+          if (deadline.deadline) {
+            y = addWrappedText(
+              doc,
+              `Deadline: ${deadline.deadline}`,
+              25,
+              y,
+              165
+            );
+          }
+
+          if (deadline.explanation) {
+            y = addWrappedText(
+              doc,
+              deadline.explanation,
+              25,
+              y,
+              165
+            );
+          }
+
+          y += 4;
+        }
+      }
+
+      // ----------------------------------------------------
+      // RISKS
+      // ----------------------------------------------------
+
+      if (
+        analysis.risks &&
+        analysis.risks.length > 0
+      ) {
+        y = addSectionTitle(
+          doc,
+          "Potential Risks",
+          y
+        );
+
+        for (const riskItem of analysis.risks) {
+          if (y > 250) {
+            doc.addPage();
+            y = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+
+          y = addWrappedText(
+            doc,
+            `${riskItem.title ?? "Risk"} — ${
+              riskItem.severity ?? "Unknown"
+            }`,
+            20,
+            y,
+            170
+          );
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+
+          if (riskItem.explanation) {
+            y = addWrappedText(
+              doc,
+              riskItem.explanation,
+              25,
+              y,
+              165
+            );
+          }
+
+          if (riskItem.agreement_text) {
+            y += 2;
+
+            doc.setFont("helvetica", "italic");
+
+            y = addWrappedText(
+              doc,
+              `Agreement wording: "${riskItem.agreement_text}"`,
+              25,
+              y,
+              165
+            );
+
+            doc.setFont("helvetica", "normal");
+          }
+
+          y += 5;
+        }
+      }
+
+      // ----------------------------------------------------
+      // IMPORTANT CLAUSES
+      // ----------------------------------------------------
+
+      if (
+        analysis.important_clauses &&
+        analysis.important_clauses.length > 0
+      ) {
+        y = addSectionTitle(
+          doc,
+          "Important Clauses",
+          y
+        );
+
+        for (const clause of analysis.important_clauses) {
+          if (y > 250) {
+            doc.addPage();
+            y = 20;
+          }
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+
+          y = addWrappedText(
+            doc,
+            clause.title ?? "Important clause",
+            20,
+            y,
+            170
+          );
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+
+          if (clause.explanation) {
+            y = addWrappedText(
+              doc,
+              clause.explanation,
+              25,
+              y,
+              165
+            );
+          }
+
+          if (clause.agreement_text) {
+            y += 2;
+
+            doc.setFont("helvetica", "italic");
+
+            y = addWrappedText(
+              doc,
+              `Agreement wording: "${clause.agreement_text}"`,
+              25,
+              y,
+              165
+            );
+
+            doc.setFont("helvetica", "normal");
+          }
+
+          y += 5;
+        }
+      }
+
+      // ----------------------------------------------------
+      // DISCLAIMER
+      // ----------------------------------------------------
+
+      if (y > 250) {
+        doc.addPage();
+        y = 20;
+      }
+
+      y += 5;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Disclaimer", 20, y);
+
+      y += 7;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+
+      y = addWrappedText(
+        doc,
+        "SamjhoSign provides AI-generated information to help users understand rental agreements. This report is not legal advice and should not be treated as a substitute for advice from a qualified legal professional.",
+        20,
+        y,
+        170,
+        5
+      );
+
+      // ----------------------------------------------------
+      // FOOTER / PAGE NUMBERS
+      // ----------------------------------------------------
+
+      const totalPages = doc.getNumberOfPages();
+
+      for (let page = 1; page <= totalPages; page++) {
+        doc.setPage(page);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+
+        doc.text(
+          `SamjhoSign • Page ${page} of ${totalPages}`,
+          20,
+          290
+        );
+      }
+
+      // ----------------------------------------------------
+      // DOWNLOAD
+      // ----------------------------------------------------
+
+      const safeFilename = item.filename
+        .replace(/\.pdf$/i, "")
+        .replace(/[^a-z0-9_-]+/gi, "_")
+        .replace(/^_+|_+$/g, "");
+
+      doc.save(
+        `${safeFilename || "rental-agreement"}_SamjhoSign_Report.pdf`
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Could not generate the PDF report.");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-6xl px-6 py-12">
@@ -154,20 +664,23 @@ export default function HistoryPage() {
         )}
 
         {/* Not signed in */}
-        {!loading && error === "Please sign in to view your analysis history." && (
-          <div className="rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
-            <Link
-              href="/auth/login"
-              className="inline-block rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white"
-            >
-              Sign in
-            </Link>
-          </div>
-        )}
+        {!loading &&
+          error ===
+            "Please sign in to view your analysis history." && (
+            <div className="rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
+              <Link
+                href="/auth/login"
+                className="inline-block rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white"
+              >
+                Sign in
+              </Link>
+            </div>
+          )}
 
         {/* Empty state */}
         {!loading &&
-          error !== "Please sign in to view your analysis history." &&
+          error !==
+            "Please sign in to view your analysis history." &&
           analyses.length === 0 && (
             <div className="rounded-3xl border border-gray-200 bg-white p-12 text-center shadow-sm">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 text-2xl">
@@ -179,8 +692,9 @@ export default function HistoryPage() {
               </h2>
 
               <p className="mx-auto mt-3 max-w-md text-gray-500">
-                Upload your first rental agreement and SamjhoSign will analyze
-                the important money, deadlines, clauses, and risks.
+                Upload your first rental agreement and SamjhoSign
+                will analyze the important money, deadlines,
+                clauses, and risks.
               </p>
 
               <Link
@@ -194,12 +708,14 @@ export default function HistoryPage() {
 
         {/* Analysis list */}
         {!loading &&
-          error !== "Please sign in to view your analysis history." &&
+          error !==
+            "Please sign in to view your analysis history." &&
           analyses.length > 0 && (
             <div className="space-y-4">
               {analyses.map((item) => {
                 const risk =
-                  item.analysis?.overall_risk?.toLowerCase() ?? "unknown";
+                  item.analysis?.overall_risk?.toLowerCase() ??
+                  "unknown";
 
                 const riskClass =
                   risk === "high"
@@ -224,7 +740,9 @@ export default function HistoryPage() {
                           </h2>
 
                           <p className="mt-2 text-sm text-gray-500">
-                            {new Date(item.created_at).toLocaleString("en-IN")}
+                            {new Date(
+                              item.created_at
+                            ).toLocaleString("en-IN")}
                             {item.pages
                               ? ` • ${item.pages} pages`
                               : ""}
@@ -235,7 +753,9 @@ export default function HistoryPage() {
                           <span
                             className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${riskClass}`}
                           >
-                            {item.analysis?.overall_risk ?? "Unknown"} risk
+                            {item.analysis?.overall_risk ??
+                              "Unknown"}{" "}
+                            risk
                           </span>
 
                           <span className="hidden text-sm font-semibold text-gray-500 sm:block">
@@ -256,16 +776,38 @@ export default function HistoryPage() {
                     </Link>
 
                     {/* Actions */}
-                    <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-5">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          router.push(`/history/${item.id}`)
-                        }
-                        className="text-sm font-semibold text-gray-600 transition hover:text-gray-950"
-                      >
-                        Open report
-                      </button>
+                    <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/history/${item.id}`
+                            )
+                          }
+                          className="text-sm font-semibold text-gray-600 transition hover:text-gray-950"
+                        >
+                          Open report
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={
+                            downloadingId === item.id
+                          }
+                          onClick={(event) =>
+                            handleDownloadPDF(
+                              event,
+                              item
+                            )
+                          }
+                          className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {downloadingId === item.id
+                            ? "Creating PDF..."
+                            : "Download PDF"}
+                        </button>
+                      </div>
 
                       <button
                         type="button"
@@ -277,7 +819,7 @@ export default function HistoryPage() {
                             item.filename
                           )
                         }
-                        className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="w-fit rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {deletingId === item.id
                           ? "Deleting..."
