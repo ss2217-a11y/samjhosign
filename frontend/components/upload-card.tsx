@@ -51,6 +51,26 @@ export default function UploadCard() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  function processFile(selectedFile: File) {
+    setError("");
+    setResult(null);
+
+    if (selectedFile.type !== "application/pdf") {
+      setFile(null);
+      setError("Please select a PDF file.");
+      return;
+    }
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      setFile(null);
+      setError("The PDF must be smaller than 10 MB.");
+      return;
+    }
+
+    setFile(selectedFile);
+  }
 
   function handleChooseFile() {
     if (isAnalyzing) {
@@ -69,16 +89,37 @@ export default function UploadCard() {
       return;
     }
 
-    setError("");
-    setResult(null);
+    processFile(selectedFile);
+  }
 
-    if (selectedFile.type !== "application/pdf") {
-      setFile(null);
-      setError("Please select a PDF file.");
+  function handleDragOver(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+
+    if (!isAnalyzing) {
+      setIsDragging(true);
+    }
+  }
+
+  function handleDragLeave(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+  }
+
+  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+
+    if (isAnalyzing) {
       return;
     }
 
-    setFile(selectedFile);
+    const droppedFile = event.dataTransfer.files?.[0];
+
+    if (!droppedFile) {
+      return;
+    }
+
+    processFile(droppedFile);
   }
 
   function handleStartOver() {
@@ -86,6 +127,7 @@ export default function UploadCard() {
     setResult(null);
     setError("");
     setLoadingStep(0);
+    setIsDragging(false);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -125,8 +167,6 @@ export default function UploadCard() {
 
       formData.append("file", file);
 
-      // Uses the deployed Render backend in production.
-      // Falls back to the local backend when running locally.
       const API_URL =
         process.env.NEXT_PUBLIC_API_URL ||
         "http://127.0.0.1:8000";
@@ -137,9 +177,7 @@ export default function UploadCard() {
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Server returned ${response.status}`
-        );
+        throw new Error(`Server returned ${response.status}`);
       }
 
       const data = await response.json();
@@ -251,7 +289,7 @@ export default function UploadCard() {
     result?.analysis.risks.length ?? 0;
 
   return (
-    <section className="mx-auto w-full max-w-5xl px-6 pb-24">
+    <section className="mx-auto w-full max-w-5xl pb-24">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -261,26 +299,97 @@ export default function UploadCard() {
         className="hidden"
       />
 
-      {/* Upload button */}
+      {/* ================= UPLOAD AREA ================= */}
       {!file && !isAnalyzing && !result && (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={handleChooseFile}
-            className="rounded-2xl bg-black px-8 py-4 text-lg font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md"
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={handleChooseFile}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              handleChooseFile();
+            }
+          }}
+          className={`group cursor-pointer rounded-[2rem] border-2 border-dashed p-8 text-center transition-all duration-200 sm:p-12 ${
+            isDragging
+              ? "border-black bg-gray-50 shadow-lg"
+              : "border-gray-300 bg-white hover:border-gray-500 hover:bg-gray-50/70 hover:shadow-md"
+          }`}
+        >
+          {/* Upload icon */}
+          <div
+            className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl transition-all ${
+              isDragging
+                ? "bg-black text-white"
+                : "bg-gray-100 text-gray-900 group-hover:bg-black group-hover:text-white"
+            }`}
           >
-            Upload Agreement
-          </button>
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6" />
+              <path d="M12 18v-6" />
+              <path d="m9 15 3-3 3 3" />
+            </svg>
+          </div>
+
+          <h3 className="mt-6 text-xl font-semibold tracking-tight text-gray-900 sm:text-2xl">
+            {isDragging
+              ? "Drop your agreement here"
+              : "Drop your agreement here"}
+          </h3>
+
+          <p className="mt-2 text-sm leading-6 text-gray-500">
+            or click anywhere here to choose a PDF from your computer
+          </p>
+
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-xs font-medium text-gray-600">
+            <span>PDF</span>
+            <span className="text-gray-300">•</span>
+            <span>Maximum 10 MB</span>
+          </div>
+
+          <div className="mx-auto mt-8 flex max-w-md items-center justify-center gap-3 text-xs text-gray-400">
+            <span className="h-px flex-1 bg-gray-200" />
+            <span>Secure document analysis</span>
+            <span className="h-px flex-1 bg-gray-200" />
+          </div>
         </div>
       )}
 
-      {/* Selected file */}
+      {/* ================= SELECTED FILE ================= */}
       {file && !result && !isAnalyzing && (
         <div className="space-y-5">
-          <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-2xl">
-                📄
+          <div className="rounded-[2rem] border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+              {/* PDF icon */}
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gray-100">
+                <svg
+                  width="30"
+                  height="30"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 2v6h6" />
+                  <path d="M8 13h2" />
+                  <path d="M8 17h6" />
+                </svg>
               </div>
 
               <div className="min-w-0 flex-1">
@@ -293,17 +402,17 @@ export default function UploadCard() {
                 </p>
               </div>
 
-              <div className="hidden rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 sm:block">
-                Ready
+              <div className="w-fit rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-700">
+                Ready to analyze
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-3">
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
             <button
               type="button"
               onClick={handleAnalyze}
-              className="rounded-2xl bg-black px-8 py-4 text-lg font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md"
+              className="rounded-2xl bg-black px-8 py-4 text-base font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md"
             >
               Analyze Agreement
             </button>
@@ -311,29 +420,39 @@ export default function UploadCard() {
             <button
               type="button"
               onClick={handleChooseFile}
-              className="rounded-2xl border border-gray-300 bg-white px-6 py-4 text-lg font-medium text-gray-800 transition hover:bg-gray-50"
+              className="rounded-2xl border border-gray-300 bg-white px-7 py-4 text-base font-semibold text-gray-800 transition hover:bg-gray-50"
             >
               Choose a different file
             </button>
           </div>
 
-          <p className="text-center text-xs text-gray-400">
+          <p className="text-center text-xs leading-5 text-gray-400">
             Analysis may take a few moments depending on the agreement length.
           </p>
         </div>
       )}
 
-      {/* Loading */}
+      {/* ================= LOADING ================= */}
       {isAnalyzing && (
         <div className="mx-auto max-w-2xl">
-          <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm sm:p-10">
+          <div className="rounded-[2rem] border border-gray-200 bg-white p-8 shadow-sm sm:p-10">
             <div className="flex flex-col items-center text-center">
               <div className="relative flex h-20 w-20 items-center justify-center">
                 <div className="absolute h-20 w-20 animate-spin rounded-full border-4 border-gray-200 border-t-black" />
 
-                <span className="text-2xl">
-                  📄
-                </span>
+                <svg
+                  width="30"
+                  height="30"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 2v6h6" />
+                </svg>
               </div>
 
               <h2 className="mt-7 text-2xl font-bold text-gray-900">
@@ -341,18 +460,15 @@ export default function UploadCard() {
               </h2>
 
               <p className="mt-2 max-w-md text-sm leading-6 text-gray-500">
-                SamjhoSign is carefully reviewing your rental
-                agreement. This may take a few moments.
+                SamjhoSign is carefully reviewing your rental agreement.
+                This may take a few moments.
               </p>
             </div>
 
             <div className="mt-8 space-y-3">
               {loadingMessages.map((message, index) => {
-                const isComplete =
-                  loadingStep > index;
-
-                const isCurrent =
-                  loadingStep === index;
+                const isComplete = loadingStep > index;
+                const isCurrent = loadingStep === index;
 
                 return (
                   <div
@@ -422,16 +538,12 @@ export default function UploadCard() {
         </div>
       )}
 
-      {/* Error */}
+      {/* ================= ERROR ================= */}
       {error && (
         <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-center text-red-700">
-          <p className="font-medium">
-            Something went wrong
-          </p>
+          <p className="font-medium">Something went wrong</p>
 
-          <p className="mt-1 text-sm">
-            {error}
-          </p>
+          <p className="mt-1 text-sm">{error}</p>
 
           {!isAnalyzing && (
             <button
@@ -445,7 +557,7 @@ export default function UploadCard() {
         </div>
       )}
 
-      {/* Results */}
+      {/* ================= RESULTS ================= */}
       {result && (
         <div
           id="analysis-results"
@@ -470,7 +582,7 @@ export default function UploadCard() {
             </button>
           </div>
 
-          {/* Report title */}
+          {/* Print title */}
           <div className="hidden print:block">
             <p className="text-sm font-medium uppercase tracking-wider text-gray-500">
               SamjhoSign
@@ -576,10 +688,7 @@ export default function UploadCard() {
           </div>
 
           {/* Overall Risk */}
-          <div
-            id="summary"
-            className="scroll-mt-36"
-          >
+          <div id="summary" className="scroll-mt-36">
             {(() => {
               const riskStyles = getRiskStyles(
                 result.analysis.overall_risk
@@ -609,8 +718,8 @@ export default function UploadCard() {
                       <div
                         className={`flex h-16 w-16 items-center justify-center rounded-2xl text-2xl font-bold ${riskStyles.icon}`}
                       >
-                        {result.analysis.overall_risk
-                          .toLowerCase() === "low"
+                        {result.analysis.overall_risk.toLowerCase() ===
+                        "low"
                           ? "✓"
                           : "!"}
                       </div>
@@ -681,9 +790,7 @@ export default function UploadCard() {
               <div className="mt-6 grid gap-4 sm:grid-cols-3">
                 <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-red-800">
-                      High
-                    </p>
+                    <p className="font-semibold text-red-800">High</p>
 
                     <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 font-bold text-red-700">
                       !
@@ -857,28 +964,26 @@ export default function UploadCard() {
               </p>
             ) : (
               <div className="mt-6 space-y-4">
-                {result.analysis.deadlines.map(
-                  (item, index) => (
-                    <div
-                      key={index}
-                      className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-gray-300"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {item.title}
-                        </h3>
+                {result.analysis.deadlines.map((item, index) => (
+                  <div
+                    key={index}
+                    className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-gray-300"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {item.title}
+                      </h3>
 
-                        <span className="w-fit rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700">
-                          {item.deadline}
-                        </span>
-                      </div>
-
-                      <p className="mt-3 leading-7 text-gray-600">
-                        {item.explanation}
-                      </p>
+                      <span className="w-fit rounded-full border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700">
+                        {item.deadline}
+                      </span>
                     </div>
-                  )
-                )}
+
+                    <p className="mt-3 leading-7 text-gray-600">
+                      {item.explanation}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -910,60 +1015,57 @@ export default function UploadCard() {
               </p>
             ) : (
               <div className="mt-6 space-y-4">
-                {result.analysis.risks.map(
-                  (item, index) => {
-                    const severity =
-                      item.severity.toLowerCase();
+                {result.analysis.risks.map((item, index) => {
+                  const severity = item.severity.toLowerCase();
 
-                    const severityClass =
-                      severity === "high"
-                        ? "border-red-200 bg-red-50 text-red-700"
-                        : severity === "medium"
-                        ? "border-amber-200 bg-amber-50 text-amber-700"
-                        : "border-emerald-200 bg-emerald-50 text-emerald-700";
+                  const severityClass =
+                    severity === "high"
+                      ? "border-red-200 bg-red-50 text-red-700"
+                      : severity === "medium"
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
-                    return (
-                      <div
-                        key={index}
-                        className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-gray-300"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-semibold text-gray-500">
-                              {index + 1}
-                            </span>
-
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {item.title}
-                            </h3>
-                          </div>
-
-                          <span
-                            className={`rounded-full border px-3 py-1 text-sm font-semibold ${severityClass}`}
-                          >
-                            {item.severity}
+                  return (
+                    <div
+                      key={index}
+                      className="rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-gray-300"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-semibold text-gray-500">
+                            {index + 1}
                           </span>
+
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {item.title}
+                          </h3>
                         </div>
 
-                        <p className="mt-4 leading-7 text-gray-600">
-                          {item.explanation}
-                        </p>
-
-                        {item.agreement_text && (
-                          <div className="mt-5 rounded-xl border border-gray-200 bg-white p-4">
-                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                              Agreement wording
-                            </p>
-
-                            <blockquote className="border-l-2 border-gray-300 pl-4 text-sm italic leading-6 text-gray-600">
-                              "{item.agreement_text}"
-                            </blockquote>
-                          </div>
-                        )}
+                        <span
+                          className={`rounded-full border px-3 py-1 text-sm font-semibold ${severityClass}`}
+                        >
+                          {item.severity}
+                        </span>
                       </div>
-                    );
-                  }
-                )}
+
+                      <p className="mt-4 leading-7 text-gray-600">
+                        {item.explanation}
+                      </p>
+
+                      {item.agreement_text && (
+                        <div className="mt-5 rounded-xl border border-gray-200 bg-white p-4">
+                          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                            Agreement wording
+                          </p>
+
+                          <blockquote className="border-l-2 border-gray-300 pl-4 text-sm italic leading-6 text-gray-600">
+                            "{item.agreement_text}"
+                          </blockquote>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1072,17 +1174,15 @@ export default function UploadCard() {
                 </h2>
 
                 <p className="mt-2 text-sm leading-6 text-gray-600">
-                  SamjhoSign provides an AI-powered explanation
-                  of your rental agreement for informational
-                  purposes only. It is not legal advice and does
-                  not determine whether a clause is legally
-                  enforceable.
+                  SamjhoSign provides an AI-powered explanation of your
+                  rental agreement for informational purposes only. It is not
+                  legal advice and does not determine whether a clause is
+                  legally enforceable.
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-gray-600">
-                  For important legal decisions or disputes,
-                  consider consulting a qualified legal
-                  professional.
+                  For important legal decisions or disputes, consider
+                  consulting a qualified legal professional.
                 </p>
               </div>
             </div>
