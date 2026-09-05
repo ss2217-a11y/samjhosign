@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import jsPDF from "jspdf";
+import { motion } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
 
 type LegalFinding = {
@@ -935,7 +936,7 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#f7f7f5]">
+      <motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.45 }} className="min-h-screen bg-[#f7f7f5]">
         <div className="mx-auto max-w-6xl px-5 py-12 sm:px-6 sm:py-16">
           <div className="animate-pulse">
             <div className="h-4 w-28 rounded-full bg-gray-200" />
@@ -944,7 +945,7 @@ export default function HistoryPage() {
             <div className="mt-12 h-64 rounded-[2rem] bg-white" />
           </div>
         </div>
-      </main>
+      </motion.main>
     );
   }
 
@@ -959,7 +960,7 @@ export default function HistoryPage() {
   ).length;
 
   return (
-    <main className="min-h-screen bg-[#f7f7f5]">
+    <motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.45 }} className="min-h-screen bg-[#f7f7f5]">
       <div className="mx-auto max-w-6xl px-5 py-10 sm:px-6 sm:py-14">
 
         {/* Header */}
@@ -1159,7 +1160,7 @@ export default function HistoryPage() {
                       };
 
                 return (
-                  <article
+                  <motion.article
                     key={item.id}
                     className="group overflow-hidden rounded-[1.75rem] border border-gray-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-xl hover:shadow-black/5"
                   >
@@ -1288,13 +1289,13 @@ export default function HistoryPage() {
 
                       </div>
                     </div>
-                  </article>
+                  </motion.article>
                 );
               })}
             </div>
           </div>
         )}
       </div>
-    </main>
+    </motion.main>
   );
 }

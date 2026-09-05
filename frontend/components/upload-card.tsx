@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
 
 function cleanAgreementText(text: string) {
@@ -727,25 +728,31 @@ export default function UploadCard() {
                 </div>
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                  <button
+                  <motion.button
                     type="button"
                     onClick={handleAnalyze}
                     className="group flex h-13 items-center justify-center gap-2 rounded-xl bg-gray-950 px-6 text-sm font-semibold text-white shadow-lg shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-xl"
-                  >
+                  
+                     whileHover={{ y: -2, scale: 1.01 }}
+                     whileTap={{ scale: 0.98 }}
+                   >
                     Analyze agreement
 
                     <span className="text-base transition-transform duration-200 group-hover:translate-x-1">
                       →
                     </span>
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
                     type="button"
                     onClick={handleChooseFile}
                     className="h-13 rounded-xl border border-gray-200 bg-white px-6 text-sm font-semibold text-gray-700 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50"
-                  >
+                  
+                     whileHover={{ y: -2 }}
+                     whileTap={{ scale: 0.98 }}
+                   >
                     Choose a different file
-                  </button>
+                  </motion.button>
                 </div>
 
                 <p className="mt-4 text-center text-xs text-gray-400">
@@ -820,7 +827,7 @@ export default function UploadCard() {
                     return (
                       <div
                         key={index}
-                        className={`flex items-center gap-4 rounded-2xl border p-4 transition-all duration-300 ${
+                        className={`samjho-fade-up flex items-center gap-4 rounded-2xl border p-4 transition-all duration-300 ${
                           isCurrent
                             ? "border-gray-300 bg-gray-50 shadow-sm"
                             : isComplete
@@ -932,7 +939,10 @@ export default function UploadCard() {
           )}
         </div>
       )}      {result && (
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           id="analysis-results"
           className="samjho-fade-up mt-12 scroll-mt-24 space-y-7"
         >
@@ -1268,6 +1278,7 @@ export default function UploadCard() {
                     <div
                       key={index}
                       className="samjho-fade-up rounded-2xl border border-gray-200 bg-[#fafafa] p-5"
+                      style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <h3 className="font-semibold text-gray-950">
@@ -1328,6 +1339,7 @@ export default function UploadCard() {
                     <div
                       key={index}
                       className="samjho-fade-up rounded-2xl border border-gray-200 bg-[#fafafa] p-5 sm:p-6"
+                      style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
@@ -1641,6 +1653,8 @@ export default function UploadCard() {
                         <div
                           key={index}
                           className={`samjho-fade-up rounded-2xl border p-5 sm:p-6 ${statusStyles.container}`}
+                          style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
+                          
                         >
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="flex items-start gap-3">
@@ -1782,6 +1796,7 @@ export default function UploadCard() {
                     <div
                       key={index}
                       className="samjho-fade-up rounded-2xl border border-gray-200 bg-[#fafafa] p-5 sm:p-6"
+                      style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
                     >
                       <div className="flex items-start gap-3">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-sm font-bold text-gray-500">
@@ -1909,7 +1924,7 @@ export default function UploadCard() {
               Analyze Another Agreement
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
     </section>
   );
