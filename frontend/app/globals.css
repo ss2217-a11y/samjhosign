@@ -1,78 +1,38 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
 
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
+
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
+
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
+
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
+
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
+
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
+
   --destructive: oklch(0.577 0.245 27.325);
+
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+
   --radius: 0.625rem;
+
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -86,27 +46,31 @@
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
+
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
+
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
+
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
+
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
+
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
+
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
+
   --destructive: oklch(0.704 0.191 22.216);
+
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -117,112 +81,375 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #111827;
+  color: white;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #111827;
+  outline-offset: 3px;
+}
+
+/* =========================================================
+   SAMJHOSIGN ANIMATION SYSTEM
+   ========================================================= */
+
+.samjho-fade-in {
+  animation: samjhoFadeIn 0.6s ease-out both;
+}
+
+.samjho-fade-up {
+  animation: samjhoFadeUp 0.65s ease-out both;
+}
+
+.samjho-fade-up-delay-1 {
+  animation: samjhoFadeUp 0.65s 0.08s ease-out both;
+}
+
+.samjho-fade-up-delay-2 {
+  animation: samjhoFadeUp 0.65s 0.16s ease-out both;
+}
+
+.samjho-fade-up-delay-3 {
+  animation: samjhoFadeUp 0.65s 0.24s ease-out both;
+}
+
+.samjho-fade-up-delay-4 {
+  animation: samjhoFadeUp 0.65s 0.32s ease-out both;
+}
+
+.samjho-scale-in {
+  animation: samjhoScaleIn 0.55s ease-out both;
+}
+
+.samjho-pulse-soft {
+  animation: samjhoPulseSoft 2.4s ease-in-out infinite;
+}
+
+.samjho-float {
+  animation: samjhoFloat 5s ease-in-out infinite;
+}
+
+.samjho-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.samjho-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  animation: samjhoShimmer 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* =========================================================
+   PREMIUM CARD EFFECTS
+   ========================================================= */
+
+.samjho-card {
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  background: white;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.samjho-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 14px 35px rgba(0, 0, 0, 0.07),
+    0 3px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* Use when you don't want cards to move */
+.samjho-card-static {
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  background: white;
+  transition:
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.samjho-card-static:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+/* =========================================================
+   BUTTON EFFECT
+   ========================================================= */
+
+.samjho-button {
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.samjho-button:hover {
+  transform: translateY(-1px);
+}
+
+.samjho-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* =========================================================
+   UPLOAD DROPZONE
+   ========================================================= */
+
+.samjho-upload-zone {
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    background-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.samjho-upload-zone:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 0, 0, 0.25);
+  background-color: rgba(249, 250, 251, 1);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
+}
+
+.samjho-upload-zone:active {
+  transform: scale(0.995);
+}
+
+/* =========================================================
+   REPORT SECTION REVEAL
+   ========================================================= */
+
+.samjho-section {
+  animation: samjhoSectionReveal 0.7s ease-out both;
+}
+
+/* =========================================================
+   LOGO / SMALL INTERACTIONS
+   ========================================================= */
+
+.samjho-logo-mark {
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.samjho-logo-mark:hover {
+  transform: rotate(-3deg) scale(1.04);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* =========================================================
+   KEYFRAMES
+   ========================================================= */
+
+@keyframes samjhoFadeIn {
+  from {
+    opacity: 0;
   }
 
-  body {
-    @apply bg-background text-foreground;
-  }
-
-  html {
-    @apply font-sans;
+  to {
+    opacity: 1;
   }
 }
 
-/* ============================================================
-   PRINT / SAVE AS PDF
-   ============================================================ */
-
-@media print {
-  @page {
-    size: A4;
-    margin: 16mm;
+@keyframes samjhoFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
   }
 
-  html,
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes samjhoScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes samjhoPulseSoft {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes samjhoFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes samjhoShimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  55%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes samjhoSectionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   ACCESSIBILITY
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =========================================================
+   PRINT
+   ========================================================= */
+
+@media print {
+  html {
+    scroll-behavior: auto;
+  }
+
   body {
     background: white !important;
   }
 
-  body {
-    color: black !important;
-  }
-
-  /* Hide normal website navigation and controls */
-  nav,
-  button,
   .no-print {
     display: none !important;
   }
 
-  /* Remove unnecessary page spacing */
-  main {
-    min-height: auto !important;
-  }
-
-  /* Make the analysis use the full printable width */
-  #analysis-results {
-    margin-top: 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-  }
-
-  /* Hide the sticky navigation */
-  #analysis-results > div.sticky {
-    display: none !important;
-  }
-
-  /* Cards should print cleanly */
-  #analysis-results > div {
+  .samjho-card,
+  .samjho-card-static {
     box-shadow: none !important;
-    break-inside: avoid;
-  }
-
-  /* Avoid cutting important cards across pages */
-  #financial,
-  #deadlines,
-  #risks,
-  #clauses,
-  #agreement-text {
-    break-inside: auto;
-  }
-
-  /* Keep individual items together */
-  #analysis-results .rounded-2xl,
-  #analysis-results .rounded-3xl {
-    break-inside: avoid;
-  }
-
-  /* Remove excessive screen-only styling */
-  .shadow-sm,
-  .shadow-md {
-    box-shadow: none !important;
-  }
-
-  /* Keep text readable */
-  p,
-  h1,
-  h2,
-  h3,
-  blockquote {
-    color: black !important;
-  }
-
-  /* Allow agreement text to expand when printed */
-  #agreement-text .max-h-96 {
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
-  /* Make long text wrap correctly */
-  #analysis-results {
-    overflow: visible !important;
-  }
-
-  /* Hide the final website CTA */
-  #analysis-results > div:last-child {
-    display: none !important;
+    transform: none !important;
   }
 }
