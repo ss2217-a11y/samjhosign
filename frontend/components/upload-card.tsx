@@ -3,12 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
+import AskSamjhoSign from "@/components/ask-samjhosign";
 
 function cleanAgreementText(text: string) {
   return text
     .replace(/₹/g, "Rs.")
     .replace(/■/g, "Rs.")
     .trim();
+}
+
+function isTenancyAgreement(analysis: Analysis) {
+  const category = (analysis.agreement_category || "").toLowerCase();
+  const type = (analysis.agreement_type || "").toLowerCase();
+  return (category === "housing" || category === "lease" || type.includes("rental") || type.includes("lease") || type.includes("tenancy"));
 }
 
 type FinancialObligation = {
@@ -62,6 +69,10 @@ type NegotiationSuggestion = {
 type Analysis = {
   overall_risk: string;
   summary: string;
+
+  // Universal agreement classification.
+  agreement_type?: string;
+  agreement_category?: string;
   financial_obligations: FinancialObligation[];
   deadlines: Deadline[];
   risks: Risk[];
@@ -104,7 +115,7 @@ export default function UploadCard() {
       "deadlines",
       "risks",
       "negotiation",
-      "legal-check",
+      ...(isTenancyAgreement(result.analysis) ? ["legal-check"] : []),
       "clauses",
       "agreement-text",
     ];
@@ -513,7 +524,7 @@ export default function UploadCard() {
       title:
         "Reading your agreement",
       description:
-        "Extracting the text from your rental agreement.",
+        "Extracting the text from your agreement.",
     },
     {
       title:
@@ -572,6 +583,9 @@ export default function UploadCard() {
 
   const legalFindingCount =
     result?.analysis.legal_findings.length ?? 0;
+
+  const showTamilNaduLegalCheck =
+    result !== null && isTenancyAgreement(result.analysis);
 
   /* NEW */
   const negotiationCount =
@@ -695,11 +709,11 @@ export default function UploadCard() {
                     <p className="text-2xl font-bold tracking-[-0.03em] text-gray-950 sm:text-3xl">
                       {isDragging
                         ? "Drop your agreement here"
-                        : "Upload your rental agreement"}
+                        : "Upload your agreement"}
                     </p>
 
                     <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-gray-500 sm:text-base">
-                      Drag and drop your PDF here,
+                      Drag and drop your agreement PDF here,
                       or click to browse your
                       computer.
                     </p>
@@ -1036,6 +1050,9 @@ export default function UploadCard() {
             </button>
           </div>
 
+          {/* ASK SAMJHOSIGN */}
+          <AskSamjhoSign agreementText={result.text} />
+
           {/* SAVE MESSAGE */}
           {saveMessage && (
             <div
@@ -1056,7 +1073,9 @@ export default function UploadCard() {
             </p>
 
             <h1 className="mt-2 text-3xl font-bold">
-              Rental Agreement Analysis
+              {result.analysis.agreement_type
+                ? `${result.analysis.agreement_type} Analysis`
+                : "Agreement Analysis"}
             </h1>
 
             <p className="mt-2 text-sm text-gray-600">
@@ -1099,6 +1118,34 @@ export default function UploadCard() {
             </div>
           </div>
 
+          {/* AGREEMENT CLASSIFICATION */}
+          {(result.analysis.agreement_type ||
+            result.analysis.agreement_category) && (
+            <div className="samjho-fade-up grid gap-4 sm:grid-cols-2">
+              {result.analysis.agreement_type && (
+                <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400">
+                    Agreement type
+                  </p>
+                  <p className="mt-2 text-xl font-bold tracking-tight text-gray-950">
+                    {result.analysis.agreement_type}
+                  </p>
+                </div>
+              )}
+
+              {result.analysis.agreement_category && (
+                <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-400">
+                    Category
+                  </p>
+                  <p className="mt-2 text-xl font-bold tracking-tight text-gray-950">
+                    {result.analysis.agreement_category}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* STICKY NAVIGATION */}
           <div className="no-print samjho-fade-in sticky top-16 z-40 -mx-2 overflow-x-auto rounded-2xl border border-gray-200 bg-white/95 p-2 shadow-md backdrop-blur">
             <div className="flex min-w-max items-center gap-1">
@@ -1111,7 +1158,9 @@ export default function UploadCard() {
                 /* NEW */
                 { id: "negotiation", label: "Negotiate" },
 
-                { id: "legal-check", label: "TN Legal Check" },
+                ...(showTamilNaduLegalCheck
+                  ? [{ id: "legal-check", label: "TN Legal Check" }]
+                  : []),
                 { id: "clauses", label: "Clauses" },
                 { id: "agreement-text", label: "Agreement" },
               ].map((item) => {
@@ -1263,6 +1312,7 @@ export default function UploadCard() {
                       </p>
                     </a>
 
+                    {showTamilNaduLegalCheck && (
                     <a
                       href="#legal-check"
                       className="rounded-2xl border border-gray-200 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-md"
@@ -1275,6 +1325,7 @@ export default function UploadCard() {
                         Legal checks
                       </p>
                     </a>
+                    )}
                   </div>
 
                   {/* RISK BREAKDOWN */}
@@ -1672,10 +1723,11 @@ export default function UploadCard() {
               TAMIL NADU LEGAL CHECK
               ===================================================== */}
 
-          <div
-            id="legal-check"
-            className="samjho-fade-up scroll-mt-36 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm"
-          >
+          {showTamilNaduLegalCheck && (
+            <div
+              id="legal-check"
+              className="samjho-fade-up scroll-mt-36 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm"
+            >
             <div className="border-b border-gray-200 bg-gray-50 p-7 sm:p-8">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-lg shadow-sm">
@@ -1826,6 +1878,7 @@ export default function UploadCard() {
               </div>
             </div>
           </div>
+          )}
 
           {/* =====================================================
               IMPORTANT CLAUSES
@@ -1954,7 +2007,7 @@ export default function UploadCard() {
 
                 <p className="mt-2 text-sm leading-6 text-gray-600">
                   SamjhoSign provides an AI-powered explanation of your
-                  rental agreement for informational purposes only. It is
+                  agreement for informational purposes only. It is
                   not legal advice and does not determine whether a clause
                   is legally enforceable.
                 </p>
@@ -1983,7 +2036,7 @@ export default function UploadCard() {
             </h2>
 
             <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-gray-500">
-              Upload another rental agreement and get a fresh analysis.
+              Upload another agreement and get a fresh analysis.
             </p>
 
             <button
