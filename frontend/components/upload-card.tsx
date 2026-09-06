@@ -91,6 +91,7 @@ export default function UploadCard() {
   const [result, setResult] = useState<Result | null>(null);
   const [saveMessage, setSaveMessage] = useState("");
   const [activeSection, setActiveSection] = useState("summary");
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
   useEffect(() => {
     if (!result) {
@@ -321,6 +322,15 @@ export default function UploadCard() {
     }, 5000);
 
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setShowSignInPrompt(true);
+        return;
+      }
+
       const formData = new FormData();
 
       formData.append("file", file);
@@ -333,9 +343,17 @@ export default function UploadCard() {
         `${API_URL}/analyze`,
         {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
           body: formData,
         }
       );
+
+      if (response.status === 401) {
+        setShowSignInPrompt(true);
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -561,7 +579,60 @@ export default function UploadCard() {
       .negotiation_suggestions?.length ?? 0;
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-6 pb-24">
+    <>
+      {showSignInPrompt && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="signin-prompt-title"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.2 }}
+            className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-7 shadow-2xl sm:p-8"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-950 text-xl text-white">
+              🔐
+            </div>
+
+            <h2
+              id="signin-prompt-title"
+              className="mt-5 text-2xl font-bold tracking-tight text-gray-950"
+            >
+              Sign in required
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              Please sign in to analyze your agreement and save your report
+              securely to your SamjhoSign account.
+            </p>
+
+            <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowSignInPrompt(false)}
+                className="rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = "/auth/login";
+                }}
+                className="rounded-xl bg-gray-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
+              >
+                Sign in
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      <section className="mx-auto w-full max-w-6xl px-6 pb-24">
       <input
         ref={fileInputRef}
         type="file"
@@ -1654,7 +1725,6 @@ export default function UploadCard() {
                           key={index}
                           className={`samjho-fade-up rounded-2xl border p-5 sm:p-6 ${statusStyles.container}`}
                           style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
-                          
                         >
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="flex items-start gap-3">
@@ -1927,5 +1997,6 @@ export default function UploadCard() {
         </motion.div>
       )}
     </section>
+    </>
   );
 }
